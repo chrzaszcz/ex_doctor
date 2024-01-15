@@ -23,9 +23,21 @@ Maps are not used, because they can be a lot slower and consume more memory (thi
 The easiest way to use it is the following:
 
 ```erlang
-:tr.trace [YourModule]
+:tr.trace([YourModule])
 YourModule.some_function()
-:tr.select
+:tr.select()
 ```
 
 You should see the collected traces for the call and return of `YourModule.some_function/0`.
+
+### Use it during development
+
+You can make Erlang Doctor available in the Erlang/Rebar3 shell during development by cloning it to `EX_DOCTOR_PATH`,
+compiling it with `mix`, and loading it in your `~/.iex.exs` file:
+
+```erlang
+Code.append_path("EX_DOCTOR_PATH/_build/dev/lib/erlang_doctor/ebin")
+Code.append_path("EX_DOCTOR_PATH/_build/dev/lib/ex_doctor/ebin")
+import ExDoctor
+Code.ensure_loaded!(:tr)
+```
