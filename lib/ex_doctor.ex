@@ -1,18 +1,7 @@
 defmodule ExDoctor do
-  @moduledoc """
-  Documentation for `ExDoctor`.
-  """
+  require Record
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> ExDoctor.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  for {name, fields} <- Record.extract_all(from_lib: "erlang_doctor/include/tr.hrl") do
+    Record.defrecord(name, fields)
   end
 end
