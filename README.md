@@ -131,11 +131,11 @@ They are stored as `tr` records with the following fields:
 - `index`: trace identifier, auto-incremented for each received trace.
 - `pid`: process ID associated with the trace.
 - `event`: `:call`, `:return` or `:exception` for function traces; `:send` or `:recv` for messages.
-- `mfa`: an MFA tuple: module name, function name and function arity; undefined for messages.
+- `mfa`: `{module, function, arity}` for function traces; `:no_mfa` for messages.
 - `data`: argument list (for calls), returned value (for returns) or class and value (for exceptions).
 - `timestamp` in microseconds.
-- `extra`: only for `:send` events; `msg` record with the following fields:
-    - `to`: message recipient (Pid),
+- `info`: For function traces and `:recv` events it is `:no_info`. For `:send` events it is a `msg` record with the following fields:
+    - `to`: message recipient (pid),
     - `exists`: boolean, indicates if the recipient process existed.
 
 You can load the record definitions with `import ExDoctor`, but in our case `mix` has done it for us.
@@ -150,25 +150,25 @@ followed by the call to `sleepy_factorial/1`.
 iex(5)> :tr.select()
 [
   {:tr, 1, #PID<0.187.0>, :call, {ExDoctor.Example, :__info__, 1},
-   [:deprecated], 1705413018330494, :undefined},
+   [:deprecated], 1705413018330494, :no_info},
   {:tr, 2, #PID<0.187.0>, :return, {ExDoctor.Example, :__info__, 1}, [],
-   1705413018330501, :undefined},
+   1705413018330501, :no_info},
   {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [3],
-   1705413018330532, :undefined},
+   1705413018330532, :no_info},
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
-   1705413018332522, :undefined},
+   1705413018332522, :no_info},
   {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [1],
-   1705413018334514, :undefined},
+   1705413018334514, :no_info},
   {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [0],
-   1705413018336506, :undefined},
+   1705413018336506, :no_info},
   {:tr, 7, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 1,
-   1705413018338509, :undefined},
+   1705413018338509, :no_info},
   {:tr, 8, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 1,
-   1705413018338511, :undefined},
+   1705413018338511, :no_info},
   {:tr, 9, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 2,
-   1705413018338512, :undefined},
+   1705413018338512, :no_info},
   {:tr, 10, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 6,
-   1705413018338513, :undefined}
+   1705413018338513, :no_info}
 ]
 ```
 
@@ -187,9 +187,9 @@ Use `:tr.select/2` to further filter the results by searching for a term in the 
 iex(7)> :tr.select(fn t -> t end, 2)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
-   1705413018332522, :undefined},
+   1705413018332522, :no_info},
   {:tr, 9, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 2,
-   1705413018338512, :undefined}
+   1705413018338512, :no_info}
 ]
 ```
 
@@ -202,9 +202,9 @@ You can use `:tr.contains_data/2` to search for a term like in the example above
 iex(8)> traces = :tr.filter(fn t -> :tr.contains_data(2, t) end)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
-   1705413018332522, :undefined},
+   1705413018332522, :no_info},
   {:tr, 9, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1}, 2,
-   1705413018338512, :undefined}
+   1705413018338512, :no_info}
 ]
 ```
 
@@ -215,7 +215,7 @@ For other traces it can return another value, or even raise an exception:
 iex(9)> :tr.filter(fn tr(data: [2]) -> :true end)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
-   1705413018332522, :undefined}
+   1705413018332522, :no_info}
 ]
 ```
 
@@ -225,7 +225,7 @@ There is also `:tr.filter/2`, which can be used to search in a different table t
 iex(10)> :tr.filter(fn tr(event: :call) -> :true end, traces)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
-   1705413018332522, :undefined}
+   1705413018332522, :no_info}
 ]
 ```
 
@@ -238,11 +238,11 @@ iex(11)> :tr.tracebacks(fn tr(data: 1) -> true end)
 [
   [
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [1], 1705413018334514, :undefined},
+     [1], 1705413018334514, :no_info},
     {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [2], 1705413018332522, :undefined},
+     [2], 1705413018332522, :no_info},
     {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [3], 1705413018330532, :undefined}
+     [3], 1705413018330532, :no_info}
   ]
 ]
 ```
@@ -258,21 +258,21 @@ iex(12)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :all})
 [
   [
     {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [0], 1705413018336506, :undefined},
+     [0], 1705413018336506, :no_info},
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [1], 1705413018334514, :undefined},
+     [1], 1705413018334514, :no_info},
     {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [2], 1705413018332522, :undefined},
+     [2], 1705413018332522, :no_info},
     {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [3], 1705413018330532, :undefined}
+     [3], 1705413018330532, :no_info}
   ],
   [
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [1], 1705413018334514, :undefined},
+     [1], 1705413018334514, :no_info},
     {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [2], 1705413018332522, :undefined},
+     [2], 1705413018332522, :no_info},
     {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [3], 1705413018330532, :undefined}
+     [3], 1705413018330532, :no_info}
   ]
 ]
 ```
@@ -284,13 +284,13 @@ iex(13)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :longest})
 [
   [
     {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [0], 1705413018336506, :undefined},
+     [0], 1705413018336506, :no_info},
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [1], 1705413018334514, :undefined},
+     [1], 1705413018334514, :no_info},
     {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [2], 1705413018332522, :undefined},
+     [2], 1705413018332522, :no_info},
     {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [3], 1705413018330532, :undefined}
+     [3], 1705413018330532, :no_info}
   ]
 ]
 ```
@@ -314,13 +314,13 @@ iex(14)> :tr.ranges(fn tr(data: [1]) -> true end)
 [
   [
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [1], 1705413018334514, :undefined},
+     [1], 1705413018334514, :no_info},
     {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
-     [0], 1705413018336506, :undefined},
+     [0], 1705413018336506, :no_info},
     {:tr, 7, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1},
-     1, 1705413018338509, :undefined},
+     1, 1705413018338509, :no_info},
     {:tr, 8, #PID<0.187.0>, :return, {ExDoctor.Example, :sleepy_factorial, 1},
-     1, 1705413018338511, :undefined}
+     1, 1705413018338511, :no_info}
   ]
 ]
 ```
@@ -341,7 +341,7 @@ It is easy to replay a particular function call with `:tr.do/1`:
 iex(15)> [t] = :tr.filter(fn tr(data: [3]) -> true end)
 [
   {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [3],
-   1705413018330532, :undefined}
+   1705413018330532, :no_info}
 ]
 iex(16)> :tr.do(t)
 6
@@ -373,8 +373,8 @@ Values of the returned map have the following format (time is in microseconds):
 
 ```{call_count, acc_time, own_time}```
 
-In the example there are four calls, which took 7703 microseconds in total.
-For nested calls we only take into account the outermost call, so this means that the whole calculation took 7.703 ms.
+In the example there are four calls, which took 7981 microseconds in total.
+For nested calls we only take into account the outermost call, so this means that the whole calculation took 7.981 ms.
 Let's see how this looks like for individual steps - we can group the stats by the function argument:
 
 ```elixir
