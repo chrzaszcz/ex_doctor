@@ -37,7 +37,7 @@ The [package](https://hex.pm/packages/ex_doctor) can be installed by adding `ex_
 ```elixir
 def deps do
   [
-    {:ex_doctor, "~> 0.1"}
+    {:ex_doctor, "~> 0.2.3"}
   ]
 end
 ```
@@ -134,9 +134,7 @@ They are stored as `tr` records with the following fields:
 - `mfa`: `{module, function, arity}` for function traces; `:no_mfa` for messages.
 - `data`: argument list (for calls), returned value (for returns) or class and value (for exceptions).
 - `timestamp` in microseconds.
-- `info`: For function traces and `:recv` events it is `:no_info`. For `:send` events it is a `msg` record with the following fields:
-    - `to`: message recipient (pid),
-    - `exists`: boolean, indicates if the recipient process existed.
+- `info`: For function traces and `:recv` events it is `:no_info`. For `:send` events it is a `{to, exists}` tuple, where `to` is the recipient pid, and `exists` is a boolean indicating if the recipient process existed.
 
 You can load the record definitions with `import ExDoctor`, but in our case `mix` has done it for us.
 The snippets shown at the top of this README do it as well.
@@ -500,14 +498,14 @@ iex(30)> :tr.select()
 You can dump the current table to file:
 
 ```elixir
-iex(31)> :tr.dump(~c"tmp.ets")
+iex(31)> :tr.dump("tmp.ets")
 :ok
 ```
 
 In a new `iex` session we can load the data with `:tr.load/1`. This will set the current table name to `:tmp`.
 
 ```elixir
-iex(1)> :tr.load(~c"tmp.ets")
+iex(1)> :tr.load("tmp.ets")
 {:ok, :tmp}
 iex(2)> :tr.select()
 [
