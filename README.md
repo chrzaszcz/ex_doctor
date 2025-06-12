@@ -316,11 +316,11 @@ Possible [options](https://hexdocs.pm/erlang_doctor/0.2.8/tr.html#t:tb_options/0
 
 - `tab` is the table or list, which is like the second argument of `:tr.filter/2`.
 - `output` - `:shortest` (default), `:all`, `:longest` - see above.
-- `format` - `:list` (default), `:tree` - returns a call tree instead of a list of tracebacks. Trees don't distinguish between `all` and `longest` output formats.
+- `format` - `:list` (default), `:tree` - returns a list of (possibly merged) call trees instead tracebacks, `:root` - returns a list of root calls. Trees don't distinguish between `:all` and `:longest` output formats. Using `:root` is equivalent to using `:tree`, and then calling `:tr.roots/1` on the results. There is also `:tr.root/1` for a single tree.
 - `order` - `:top_down` (default), `:bottom_up` - call order in each tracaback; only for the `:list` format.
 - `limit` - positive integer or `:infinity` (default) - limits the number of matched traces. The actual number of tracebacks returned can be smaller unless `output` is set ot `:all`.
 
-There are also functions `:tr.traceback/1` and `:tr.traceback/2`. They set `limit` to one and return only one trace if it exists. The options for `:tr.traceback/2` are the same as for `:tr.traceback/2` except `limit` and `format`. Additionally, it is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.8/tr.html#t:tr/0) record (or an index) directly to `:tr.traceback/1` to obtain the traceback for the provided trace event.
+There are also functions `:tr.traceback/1` and `:tr.traceback/2`. They set `limit` to one and return only one trace if it exists. The options for `:tr.traceback/2` are the same as for `:tr.traceback/2` except `limit` and `format` (which are not supported). Additionally, it is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.8/tr.html#t:tr/0) record (or an index) as the first argument to `:tr.traceback/1` or `:tr.traceback/2` to obtain the traceback for the provided trace event.
 
 ### Trace ranges for filtered traces: `ranges`
 
@@ -354,7 +354,7 @@ There is also `:tr.ranges/2` - it accepts a [map of options](https://hexdocs.pm/
 When you combine the options into `%{output: :incomplete, max_depth: 1}`,
 you get all the calls which didn't return (they were still executing when tracing was stopped).
 
-There are two additional functions: `:tr.range/1` and `:tr.range/2`, which return only one range if it exists. It is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.8/tr.html#t:tr/0) record or an index to `:tr.range/1` as well.
+There are two additional functions: `:tr.range/1` and `:tr.range/2`, which return only one range if it exists. It is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.8/tr.html#t:tr/0) record or an index as the first argument to `:tr.range/1` or `:tr.range/2` as well.
 
 ### Calling function from a trace: `do`
 
