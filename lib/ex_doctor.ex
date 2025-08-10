@@ -78,8 +78,11 @@ defmodule ExDoctor do
   defdelegate call_stat(key_f, tab), to: :tr
 
   # API - utilities
+  @doc ~S"""
+  This implements `tr:do/1` as `do` is a reserved word in elixir
+  """
+  defdelegate exec(tr), to: :tr, as: :do
   defdelegate contains_data(data_val, tr), to: :tr
-  defdelegate do(tr), to: :tr
   defdelegate lookup(index), to: :tr
   defdelegate app_modules(app_name), to: :tr
   defdelegate mfarity(mfa), to: :tr
