@@ -17,7 +17,7 @@ To quickly try it out right now, copy & paste the following to your `iex`:
 
 This snippet downloads, compiles and starts two modules:
 
-- [`:tr`](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html) is the main module of [Erlang Doctor](https://hex.pm/packages/erlang_doctor), which provides all the functionality.
+- [`:tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html) is the main module of [Erlang Doctor](https://hex.pm/packages/erlang_doctor), which provides all the functionality.
 - `ExDoctor` is a small Elixir module, which allows using the Erlang records defined in `tr.hrl`.
 
 The Erlang records are used to allow quick and easy pattern-matching, which is used very frequently in ExDoctor.
@@ -40,7 +40,7 @@ The [package](https://hex.pm/packages/ex_doctor) can be installed by adding `ex_
 ```elixir
 def deps do
   [
-    {:ex_doctor, "~> 0.2.9"}
+    {:ex_doctor, "~> 0.3.0"}
   ]
 end
 ```
@@ -66,7 +66,7 @@ and execute the numbered commands in the same order.
 
 In our case ExDoctor is automatically started by `mix`, but if you need to start it yourself, call `:tr.start/0`.
 
-There is also `:tr.start/1`, which accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:init_options/0), including:
+There is also `:tr.start/1`, which accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:init_options/0), including:
 
 - `tab`: collected traces are stored in an ETS table with this name (default: `:trace`),
 - `limit`: maximum number of traces in the table - when it is reached, tracing is stopped (default: no limit).
@@ -105,7 +105,7 @@ If you want to trace selected processes instead of all of them, you can use
 :tr.trace([Module1, Module2], [Pid1, Pid2])
 ```
 
-The `:tr.trace/1` function also accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:trace_options/0), which include:
+The `:tr.trace/1` function also accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:trace_options/0), which include:
 
 - `modules`: a list of module names or `{module, function, arity}` tuples. The list is empty by default.
 - `pids`: a list of Pids of processes to trace, or `:all` (default) to trace all processes.
@@ -145,7 +145,7 @@ e.g. for one second with:
 ## Debugging: data analysis
 
 The collected traces are stored in an ETS table (default name: `:trace`).
-They are stored as [`tr`](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tr/0) records with the following fields:
+They are stored as [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0) records with the following fields:
 
 - `index`: trace identifier, auto-incremented for each received trace.
 - `pid`: process ID associated with the trace.
@@ -190,7 +190,7 @@ iex(5)> :tr.select()
 ```
 
 The `:tr.select/1` function accepts a fun that is passed to `:ets.fun2ms/1`.
-This way you can limit the selection to specific items and select only some fields from the [`tr`](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tr/0) record:
+This way you can limit the selection to specific items and select only some fields from the [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0) record:
 
 ```elixir
 iex(6)> :tr.select(fn tr(event: :call, data: [n]) when is_integer(n) -> n end)
@@ -225,11 +225,11 @@ iex(8)> traces = :tr.filter(fn t -> :tr.contains_data(2, t) end)
 ]
 ```
 
-The provided function is a predicate, which has to return `:true` for the matching traces.
+The provided function is a predicate, which has to return `true` for the matching traces.
 For other traces it can return another value, or even raise an exception:
 
 ```elixir
-iex(9)> :tr.filter(fn tr(data: [2]) -> :true end)
+iex(9)> :tr.filter(fn tr(data: [2]) -> true end)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info}
@@ -239,11 +239,30 @@ iex(9)> :tr.filter(fn tr(data: [2]) -> :true end)
 There is also `:tr.filter/2`, which can be used to search in a different table than the current one - or in a list:
 
 ```elixir
-iex(10)> :tr.filter(fn tr(event: :call) -> :true end, traces)
+iex(10)> :tr.filter(fn tr(event: :call) -> true end, traces)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info}
 ]
+```
+
+There are also additional ready-to-use predicates besides `:tr.contains_data/2`:
+
+1. `:tr.match_data/2` performs a recursive check for terms like `:tr.contains_data/2`,
+  but instead of checking for equality, it applies the predicate function
+  provided as the first argument to each term, and returns `true` if the predicate returned `true`
+  for any of them. The predicate can return any other value or fail for non-matching terms.
+1. `:tr.contains_val/2` is like `:tr.contains_data/2`, but the second argument is the `data` term itself rather than a trace record with data.
+2. `:tr.match_val/2` is like `:tr.match_data/2`, but the second argument is the `data` term itself rather than a trace record with data.
+
+By combining these predicates, you can search for complex terms, e.g.
+the following expression returns trace records that contain any (possibly nested in tuples/lists/maps)
+3-element tuples with a map as the third element - and that map has to contain the atom `:error`
+(possibly nested in tuples/lists/maps).
+
+
+```elixir
+:tr.filter(fn t -> :tr.match_data(fn {_, _, map = %{}} -> :tr.contains_val(:error, map) end, t) end)
 ```
 
 ### Tracebacks for filtered traces: `tracebacks`
@@ -312,7 +331,7 @@ iex(13)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :longest})
 ]
 ```
 
-Possible [options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tb_options/0) for `:tr.tracebacks/2` include:
+Possible [options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tb_options/0) for `:tr.tracebacks/2` include:
 
 - `tab` is the table or list, which is like the second argument of `:tr.filter/2`.
 - `output` - `:shortest` (default), `:all`, `:longest` - see above.
@@ -320,7 +339,7 @@ Possible [options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tb_options/0
 - `order` - `:top_down` (default), `:bottom_up` - call order in each tracaback; only for the `:list` format.
 - `limit` - positive integer or `:infinity` (default) - limits the number of matched traces. The actual number of tracebacks returned can be smaller unless `output` is set ot `:all`.
 
-There are also functions `:tr.traceback/1` and `:tr.traceback/2`. They set `limit` to one and return only one trace if it exists. The options for `:tr.traceback/2` are the same as for `:tr.traceback/2` except `limit` and `format` (which are not supported). Additionally, it is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tr/0) record (or an index) as the first argument to `:tr.traceback/1` or `:tr.traceback/2` to obtain the traceback for the provided trace event.
+There are also functions `:tr.traceback/1` and `:tr.traceback/2`. They set `limit` to one and return only one trace if it exists. The options for `:tr.traceback/2` are the same as for `:tr.traceback/2` except `limit` and `format` (which are not supported). Additionally, it is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0) record (or an index) as the first argument to `:tr.traceback/1` or `:tr.traceback/2` to obtain the traceback for the provided trace event.
 
 ### Trace ranges for filtered traces: `ranges`
 
@@ -342,7 +361,7 @@ iex(14)> :tr.ranges(fn tr(data: [1]) -> true end)
 ]
 ```
 
-There is also `:tr.ranges/2` - it accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:range_options/0), including:
+There is also `:tr.ranges/2` - it accepts a [map of options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:range_options/0), including:
 
 - `tab` is the table or list which is like the second argument of `:tr.filter/2`,
 - `max_depth` is the maximum depth of nested calls. A message event also adds 1 to the depth.
@@ -354,7 +373,7 @@ There is also `:tr.ranges/2` - it accepts a [map of options](https://hexdocs.pm/
 When you combine the options into `%{output: :incomplete, max_depth: 1}`,
 you get all the calls which didn't return (they were still executing when tracing was stopped).
 
-There are two additional functions: `:tr.range/1` and `:tr.range/2`, which return only one range if it exists. It is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:tr/0) record or an index as the first argument to `:tr.range/1` or `:tr.range/2` as well.
+There are two additional functions: `:tr.range/1` and `:tr.range/2`, which return only one range if it exists. It is possible to pass a [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0) record or an index as the first argument to `:tr.range/1` or `:tr.range/2` as well.
 
 ### Calling function from a trace: `do`
 
@@ -373,9 +392,42 @@ iex(16)> :tr.do(t)
 This is useful e.g. for checking if a bug has been fixed without running the whole test suite.
 This function can be called with an index as the argument.
 
-### Getting a single trace for the index: `lookup`
+### Browsing traces: `lookup`, `prev`, `next`
 
-Use `:tr.lookup/1` to obtain the trace for an index.
+Use `:tr.lookup/1` to obtain the trace record for an index. Also, given a trace record or an index,
+you can obtain the next trace record with `:tr.next/1`, or the previous one with `:tr.prev/1`.
+
+```elixir
+iex(17)> t = :tr.next(t)
+{:tr, 4, #PID<0.182.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
+ 1761670163922507, :no_info}
+iex(18)> t = :tr.prev(t)
+{:tr, 3, #PID<0.182.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [3],
+ 1761670163920752, :no_info}
+```
+
+When there is no trace to return, the `:not_found` error is raised:
+
+```elixir
+iex(19)> :tr.prev(1)
+** (ErlangError) Erlang error: :not_found
+    (erlang_doctor 0.2.9) /Users/pawelchrzaszcz/dev/erlang_doctor/src/tr.erl:629: :tr.prev(1, #Function<15.11954083/1 in :tr.prev/2>, :trace)
+    iex:53: (file)
+```
+
+There are also more advanced variants of these fucntions: `:tr.next/2` and `:tr.prev/2`.
+As their second argument, they take a [map of options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:prev_next_options/0), including:
+
+- `tab` is the table or list (like the second argument of `:tr.filter/2`),
+- `pred` is a predicate function that should return `true` for a matching trace record.
+    For other arguments, it can return a different value or fail.
+    When used, `tab` will be traversed until a matching trace is found.
+
+There are also functions `:tr.seq_next/1` and `:tr.seq_prev/1`.
+Given a trace record or an index, they first check the `pid` of the process for that trace record,
+and then they return next/previous trace record with the same `pid`.
+This effect could be achieved with a predicate function: `fn tr(pid: p) -> p == pid end`,
+but these utility functions are much more handy.
 
 ## Profiling
 
@@ -388,7 +440,7 @@ The simplest way to use this function is to look at the total number of calls an
 To do this, we group all calls under one key, e.g. `total`:
 
 ```elixir
-iex(17)> :tr.call_stat(fn _ -> :total end)
+iex(20)> :tr.call_stat(fn _ -> :total end)
 %{total: {5, 7988, 7988}}
 ```
 
@@ -401,7 +453,7 @@ For nested calls we only take into account the outermost call, so this means tha
 Let's see how this looks like for individual steps - we can group the stats by the function argument:
 
 ```elixir
-iex(18)> :tr.call_stat(fn tr(data: [n]) -> n end)
+iex(21)> :tr.call_stat(fn tr(data: [n]) -> n end)
 %{
   0 => {1, 2003, 2003},
   1 => {1, 3997, 1994},
@@ -415,7 +467,7 @@ You can use the provided function to do filtering as well - let's make the outpu
 by filtering out the unwanted call to `__info__(:deprecated)`:
 
 ```elixir
-iex(19)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
+iex(22)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 %{
   0 => {1, 2003, 2003},
   1 => {1, 3997, 1994},
@@ -429,7 +481,7 @@ iex(19)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 You can sort the call stat by accumulated time (descending) with `:tr.sorted_call_stat/1`:
 
 ```elixir
-iex(20)> :tr.sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
+iex(23)> :tr.sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 [{3, 1, 7981, 1991}, {2, 1, 5990, 1993}, {1, 1, 3997, 1994}, {0, 1, 2003, 2003}]
 ```
 
@@ -438,7 +490,7 @@ To pretty-print it, use `:tr.print_sorted_call_stat/2`.
 The second argument limits the table row number, e.g. we can only print the top 3 items:
 
 ```elixir
-iex(21)> :tr.print_sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end, 3)
+iex(24)> :tr.print_sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end, 3)
 3  1  7981  1991
 2  1  5990  1993
 1  1  3997  1994
@@ -455,20 +507,20 @@ As an example, let's trace the call to a function which calculates the 4th eleme
 in a recursive way. The `trace` table should be empty, so let's clean it up first:
 
 ```elixir
-iex(22)> :tr.clean()
+iex(25)> :tr.clean()
 :ok
-iex(23)> :tr.trace([{Example, :fib, 1}])
+iex(26)> :tr.trace([{Example, :fib, 1}])
 ok
-iex(24)> Example.fib(4)
+iex(27)> Example.fib(4)
 3
-iex(25)> :tr.stop_tracing()
+iex(28)> :tr.stop_tracing()
 :ok
 ```
 
 Now it is possible to print the most time consuming call trees that repeat at least twice:
 
 ```elixir
-iex(26)> :tr.top_call_trees()
+iex(29)> :tr.top_call_trees()
 [
   {13, 2,
    {:node, ExDoctor.Example, :fib, [2],
@@ -485,7 +537,7 @@ and `count` is the number of times the tree repeated. The list is sorted by `tim
 In the example above `fib(2)` was called twice and `fib(1)` was called 3 times,
 what already shows that the recursive implementation is suboptimal.
 
-There is also `:tr.top_call_trees/1`, which takes a [map of options](https://hexdocs.pm/erlang_doctor/0.2.9/tr.html#t:top_call_trees_options/0), including:
+There is also `:tr.top_call_trees/1`, which takes a [map of options](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:top_call_trees_options/0), including:
 - `output` - `:reduced` by default, but it can be set to `:complete` where subtrees of already listed trees are also listed.
 - `min_count` - minimum number of times a tree has to occur to be listed, the default is 2.
 - `min_time` - minimum accumulated time for a tree, by default there is no minimum.
@@ -498,23 +550,23 @@ As an exercise, try calling `:tr.top_call_trees(%{min_count: 1000})` for `fib(20
 To get the current table name, use `:tr.tab/0`:
 
 ```elixir
-iex(27)> :tr.tab()
+iex(30)> :tr.tab()
 :trace
 ```
 
 To switch to a new table, use `:tr.set_tab/1`. The table need not exist.
 
 ```elixir
-iex(28)> :tr.set_tab(:tmp)
+iex(31)> :tr.set_tab(:tmp)
 :ok
 ```
 
 Now you can collect traces to the new table without changing the original one.
 
 ```elixir
-iex(29)> :tr.trace([Enum]); Enum.to_list(1..10); :tr.stop_tracing()
+iex(32)> :tr.trace([Enum]); Enum.to_list(1..10); :tr.stop_tracing()
 :ok
-iex(30)> :tr.select()
+iex(33)> :tr.select()
 [
   (...)
 ]
@@ -523,7 +575,7 @@ iex(30)> :tr.select()
 You can dump the current table to file:
 
 ```elixir
-iex(31)> :tr.dump("tmp.ets")
+iex(34)> :tr.dump("tmp.ets")
 :ok
 ```
 
