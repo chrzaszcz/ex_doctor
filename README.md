@@ -155,8 +155,12 @@ They are stored as [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0)
 - `timestamp` in microseconds.
 - `info`: For `:send` events it is a `{to, exists}` tuple, where `to` is the recipient pid, and `exists` is a boolean indicating if the recipient process existed. For other events it is `:no_info`.
 
-You can load the record definitions with `import ExDoctor`, but in our case `mix` has already done it for us.
-The snippets shown at the top of this page do it as well.
+You can load the record definitions with `import ExDoctor`:
+
+```elixir
+iex(5)> import ExDoctor
+ExDoctor
+```
 
 ### Trace selection: `select`
 
@@ -164,7 +168,7 @@ Use `:tr.select/0` to select all collected traces, which include a system call t
 followed by the call to `sleepy_factorial/1`.
 
 ```elixir
-iex(5)> :tr.select()
+iex(6)> :tr.select()
 [
   {:tr, 1, #PID<0.187.0>, :call, {ExDoctor.Example, :__info__, 1},
    [:deprecated], 1705413018330494, :no_info},
@@ -193,7 +197,7 @@ The `:tr.select/1` function accepts a fun that is passed to `:ets.fun2ms/1`.
 This way you can limit the selection to specific items and select only some fields from the [`tr`](https://hexdocs.pm/erlang_doctor/0.3.0/tr.html#t:tr/0) record:
 
 ```elixir
-iex(6)> :tr.select(fn tr(event: :call, data: [n]) when is_integer(n) -> n end)
+iex(7)> :tr.select(fn tr(event: :call, data: [n]) when is_integer(n) -> n end)
 [3, 2, 1, 0]
 ```
 
@@ -201,7 +205,7 @@ Use `:tr.select/2` to further filter the results by searching for a term in the 
 (recursively searching in lists, tuples and maps).
 
 ```elixir
-iex(7)> :tr.select(fn t -> t end, 2)
+iex(8)> :tr.select(fn t -> t end, 2)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info},
@@ -216,7 +220,7 @@ Sometimes it might be easier to use `:tr.filter/1`, because it can accept any fu
 You can use `:tr.contains_data/2` to search for a term like in the example above.
 
 ```elixir
-iex(8)> traces = :tr.filter(fn t -> :tr.contains_data(2, t) end)
+iex(9)> traces = :tr.filter(fn t -> :tr.contains_data(2, t) end)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info},
@@ -229,7 +233,7 @@ The provided function is a predicate, which has to return `true` for the matchin
 For other traces it can return another value, or even raise an exception:
 
 ```elixir
-iex(9)> :tr.filter(fn tr(data: [2]) -> true end)
+iex(10)> :tr.filter(fn tr(data: [2]) -> true end)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info}
@@ -239,7 +243,7 @@ iex(9)> :tr.filter(fn tr(data: [2]) -> true end)
 There is also `:tr.filter/2`, which can be used to search in a different table than the current one - or in a list:
 
 ```elixir
-iex(10)> :tr.filter(fn tr(event: :call) -> true end, traces)
+iex(11)> :tr.filter(fn tr(event: :call) -> true end, traces)
 [
   {:tr, 4, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
    1705413018332522, :no_info}
@@ -270,7 +274,7 @@ the following expression returns trace records that contain any (possibly nested
 To find the tracebacks (stack traces) for matching traces, use `:tr.tracebacks/1`:
 
 ```elixir
-iex(11)> :tr.tracebacks(fn tr(data: 1) -> true end)
+iex(12)> :tr.tracebacks(fn tr(data: 1) -> true end)
 [
   [
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
@@ -290,7 +294,7 @@ One can notice that the call for 0 also returned 1, but the call tree got pruned
 You can change this by returning tracebacks for all matching traces even if they overlap, setting the `output` option to `:all`. Options are specified in the second argument, which is a map:
 
 ```elixir
-iex(12)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :all})
+iex(13)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :all})
 [
   [
     {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
@@ -316,7 +320,7 @@ iex(12)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :all})
 The third possibility is `:longest`, which does the opposite of pruning, leaving only the longest tracabacks when they overlap:
 
 ```elixir
-iex(13)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :longest})
+iex(14)> :tr.tracebacks(fn tr(data: 1) -> true end, %{output: :longest})
 [
   [
     {:tr, 6, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
@@ -346,7 +350,7 @@ There are also functions `:tr.traceback/1` and `:tr.traceback/2`. They set `limi
 To get a list of traces between each matching call and the corresponding return, use `:tr.ranges/1`:
 
 ```elixir
-iex(14)> :tr.ranges(fn tr(data: [1]) -> true end)
+iex(15)> :tr.ranges(fn tr(data: [1]) -> true end)
 [
   [
     {:tr, 5, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1},
@@ -380,12 +384,12 @@ There are two additional functions: `:tr.range/1` and `:tr.range/2`, which retur
 It is easy to replay a particular function call with `:tr.do/1`:
 
 ```elixir
-iex(15)> [t] = :tr.filter(fn tr(data: [3]) -> true end)
+iex(16)> [t] = :tr.filter(fn tr(data: [3]) -> true end)
 [
   {:tr, 3, #PID<0.187.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [3],
    1705413018330532, :no_info}
 ]
-iex(16)> :tr.do(t)
+iex(17)> :tr.do(t)
 6
 ```
 
@@ -398,10 +402,10 @@ Use `:tr.lookup/1` to obtain the trace record for an index. Also, given a trace 
 you can obtain the next trace record with `:tr.next/1`, or the previous one with `:tr.prev/1`.
 
 ```elixir
-iex(17)> t = :tr.next(t)
+iex(18)> t = :tr.next(t)
 {:tr, 4, #PID<0.182.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [2],
  1761670163922507, :no_info}
-iex(18)> t = :tr.prev(t)
+iex(19)> t = :tr.prev(t)
 {:tr, 3, #PID<0.182.0>, :call, {ExDoctor.Example, :sleepy_factorial, 1}, [3],
  1761670163920752, :no_info}
 ```
@@ -409,7 +413,7 @@ iex(18)> t = :tr.prev(t)
 When there is no trace to return, the `:not_found` error is raised:
 
 ```elixir
-iex(19)> :tr.prev(1)
+iex(20)> :tr.prev(1)
 ** (ErlangError) Erlang error: :not_found
     (erlang_doctor 0.2.9) /Users/pawelchrzaszcz/dev/erlang_doctor/src/tr.erl:629: :tr.prev(1, #Function<15.11954083/1 in :tr.prev/2>, :trace)
     iex:53: (file)
@@ -440,7 +444,7 @@ The simplest way to use this function is to look at the total number of calls an
 To do this, we group all calls under one key, e.g. `total`:
 
 ```elixir
-iex(20)> :tr.call_stat(fn _ -> :total end)
+iex(21)> :tr.call_stat(fn _ -> :total end)
 %{total: {5, 7988, 7988}}
 ```
 
@@ -453,7 +457,7 @@ For nested calls we only take into account the outermost call, so this means tha
 Let's see how this looks like for individual steps - we can group the stats by the function argument:
 
 ```elixir
-iex(21)> :tr.call_stat(fn tr(data: [n]) -> n end)
+iex(22)> :tr.call_stat(fn tr(data: [n]) -> n end)
 %{
   0 => {1, 2003, 2003},
   1 => {1, 3997, 1994},
@@ -467,7 +471,7 @@ You can use the provided function to do filtering as well - let's make the outpu
 by filtering out the unwanted call to `__info__(:deprecated)`:
 
 ```elixir
-iex(22)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
+iex(23)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 %{
   0 => {1, 2003, 2003},
   1 => {1, 3997, 1994},
@@ -481,7 +485,7 @@ iex(22)> :tr.call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 You can sort the call stat by accumulated time (descending) with `:tr.sorted_call_stat/1`:
 
 ```elixir
-iex(23)> :tr.sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
+iex(24)> :tr.sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end)
 [{3, 1, 7981, 1991}, {2, 1, 5990, 1993}, {1, 1, 3997, 1994}, {0, 1, 2003, 2003}]
 ```
 
@@ -490,7 +494,7 @@ To pretty-print it, use `:tr.print_sorted_call_stat/2`.
 The second argument limits the table row number, e.g. we can only print the top 3 items:
 
 ```elixir
-iex(24)> :tr.print_sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end, 3)
+iex(25)> :tr.print_sorted_call_stat(fn tr(data: [n]) when is_integer(n) -> n end, 3)
 3  1  7981  1991
 2  1  5990  1993
 1  1  3997  1994
@@ -507,20 +511,20 @@ As an example, let's trace the call to a function which calculates the 4th eleme
 in a recursive way. The `trace` table should be empty, so let's clean it up first:
 
 ```elixir
-iex(25)> :tr.clean()
+iex(26)> :tr.clean()
 :ok
-iex(26)> :tr.trace([{Example, :fib, 1}])
+iex(27)> :tr.trace([{Example, :fib, 1}])
 ok
-iex(27)> Example.fib(4)
+iex(28)> Example.fib(4)
 3
-iex(28)> :tr.stop_tracing()
+iex(29)> :tr.stop_tracing()
 :ok
 ```
 
 Now it is possible to print the most time consuming call trees that repeat at least twice:
 
 ```elixir
-iex(29)> :tr.top_call_trees()
+iex(30)> :tr.top_call_trees()
 [
   {13, 2,
    {:node, ExDoctor.Example, :fib, [2],
@@ -550,23 +554,23 @@ As an exercise, try calling `:tr.top_call_trees(%{min_count: 1000})` for `fib(20
 To get the current table name, use `:tr.tab/0`:
 
 ```elixir
-iex(30)> :tr.tab()
+iex(31)> :tr.tab()
 :trace
 ```
 
 To switch to a new table, use `:tr.set_tab/1`. The table need not exist.
 
 ```elixir
-iex(31)> :tr.set_tab(:tmp)
+iex(32)> :tr.set_tab(:tmp)
 :ok
 ```
 
 Now you can collect traces to the new table without changing the original one.
 
 ```elixir
-iex(32)> :tr.trace([Enum]); Enum.to_list(1..10); :tr.stop_tracing()
+iex(33)> :tr.trace([Enum]); Enum.to_list(1..10); :tr.stop_tracing()
 :ok
-iex(33)> :tr.select()
+iex(34)> :tr.select()
 [
   (...)
 ]
@@ -575,7 +579,7 @@ iex(33)> :tr.select()
 You can dump the current table to file:
 
 ```elixir
-iex(34)> :tr.dump("tmp.ets")
+iex(35)> :tr.dump("tmp.ets")
 :ok
 ```
 
